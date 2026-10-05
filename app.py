@@ -3,6 +3,7 @@ import sqlite3
 import json
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from typing import List
 from google import genai
@@ -56,6 +57,11 @@ class PharmaMarketQuery(BaseModel):
     target_region: str = Field(description="The region where they want to predict drug/vaccine market demand.")
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+# ---- AUTOMATIC HOME REDIRECT ----
+@app.get("/", include_in_schema=False)
+def redirect_to_docs():
+    return RedirectResponse(url="/docs")
 
 # ---- PORTAL 1: FIELD VETERINARIANS (Data Collection Engine) ----
 @app.post("/api/vet/submit-case", tags=["Veterinarian Portal"])
@@ -116,7 +122,6 @@ def get_farmer_advisory(data: FarmerQueryInput):
 @app.post("/api/government/surveillance-report", tags=["Government B2G Portal"])
 def get_government_surveillance(data: CountyGovtQuery):
     try:
-        # Fetch ALL cases recorded in that location for epidemiological analysis
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("SELECT suspected_disease, animal_species, case_count, timestamp FROM vet_cases WHERE location LIKE ?", (f"%{data.target_county_or_location}%",))
@@ -150,7 +155,6 @@ def get_government_surveillance(data: CountyGovtQuery):
 @app.post("/api/pharmaceutical/market-demand", tags=["Pharmaceutical B2B Portal"])
 def get_pharma_demand(data: PharmaMarketQuery):
     try:
-        # Pull what treatments vets are actively using in the field right now
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("SELECT suspected_disease, interventions, preventive_recommendations FROM vet_cases WHERE location LIKE ?", (f"%{data.target_region}%",))
@@ -158,25 +162,21 @@ def get_pharma_demand(data: PharmaMarketQuery):
         conn.close()
         
         current_month = datetime.now().strftime("%B")
-        
         clinical_context = "\n".join([f"- Disease: {row[0]}, Current Drug Used: {row[1]}, Vaccine Needs: {row[2]}" for row in market_data]) if market_data else "No active clinical logs for this area."
         
         prompt = f"""
         Current Month: {current_month}
         Target Region: {data.target_region}
-        Recent Field Vet Logs:
+        Recent veterinary treatment logs:
         {clinical_context}
         
-        Act as a senior pharmaceutical commercial analyst. Generate a Market Demand & Supply Forecasting Intelligence Report for drug production companies and local stockists. Include:
-        1. Inventory Shock Warning: Which drugs/vaccines will experience immediate demand spikes due to incoming weather/seasonal trends?
-        2. Supply Chain Optimization: What exact products should stockists clear out or stock up on right now to capture maximum market share?
-        3. Targeted Production: Strategic recommendations for vaccine batch manufacturing timelines.
+        Predict commercial pharmaceutical demands for medical stockists. Highlight high-demand vaccines, looming antibiotic requirements, and strategic supply-chain preparation directives based on real-time disease vectors.
         """
         response = client.models.generate_content(
             model='gemini-3.8-flash',
             contents=prompt,
-            config=types.GenerateContentConfig(system_instruction="You are the Lead Commercial Pharma Supply Chain Analyst for The MAYOR VETERINARY CONSORTIUM."),
+            config=types.GenerateContentConfig(system_instruction="You are an expert Pharmaceutical Supply Chain Analyst specializing in veterinary medicine market-intelligence for The MAYOR VETERINARY CONSORTIUM."),
         )
-        return {"region": data.target_region, "forecast_season": current_month, "market_intelligence": response.text}
+        return {"target_region": data.target_region, "analysis_month": current_month, "market_demand_forecast": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
