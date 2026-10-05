@@ -68,7 +68,7 @@ def redirect_to_docs():
 def submit_vet_case(data: VetInput):
     try:
         response = client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-2.5-flash',
             contents=f"Extract clinical data from these notes: {data.raw_notes}",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -110,7 +110,7 @@ def get_farmer_advisory(data: FarmerQueryInput):
         
         prompt = f"Location: {data.farmer_location}\nLivestock: {data.animal_type}\nMonth: {current_month}\n\n{history_context}\n\nProvide a scannable preventative roadmap highlighting seasonal variations, high-risk localized diseases, and crucial required vaccines."
         response = client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(system_instruction="You are the lead preventative AI agricultural specialist for The MAYOR VETERINARY CONSORTIUM."),
         )
@@ -143,7 +143,7 @@ def get_government_surveillance(data: CountyGovtQuery):
         3. Strategic Public Interventions & Mandatory Quarantine/Vaccination Directives required.
         """
         response = client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(system_instruction="You are a Chief Veterinary Epidemiologist for The MAYOR VETERINARY CONSORTIUM reporting directly to state and local governments."),
         )
@@ -173,7 +173,7 @@ def get_pharma_demand(data: PharmaMarketQuery):
         Predict commercial pharmaceutical demands for medical stockists. Highlight high-demand vaccines, looming antibiotic requirements, and strategic supply-chain preparation directives based on real-time disease vectors.
         """
         response = client.models.generate_content(
-            model='gemini-3.8-flash',
+            model='gemini-2.5-flash',
             contents=prompt,
             config=types.GenerateContentConfig(system_instruction="You are an expert Pharmaceutical Supply Chain Analyst specializing in veterinary medicine market-intelligence for The MAYOR VETERINARY CONSORTIUM."),
         )
